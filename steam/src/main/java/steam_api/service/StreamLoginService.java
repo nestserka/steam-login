@@ -1,21 +1,57 @@
 package steam_api.service;
 
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import steam_api.security.SecurityUser;
-
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import java.util.Optional;
+import org.springframework.web.reactive.function.client.WebClient;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
 @Service
 public class StreamLoginService {
+
+    @Value("${steam.community-login-url}")
+    private String steamLoginUrl;
+    private static final Logger logger = LoggerFactory.getLogger(StreamLoginService.class);
+
+    public ResponseEntity<String> checkSteamLogin(String openidNs, String openidMode, String openidOpEndpoint,
+                                                  String openidClaimedId, String openidIdentity, String openidReturnTo,
+                                                  String openidResponseNonce, String openidAssocHandle, String openidSigned,
+                                                  String openidSig) {
+        try {
+            WebClient.create(steamLoginUrl)
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/openid/login")
+                            .queryParam("openid.ns", openidNs)
+                            .queryParam("openid.mode", "check_authentication")
+                            .queryParam("openid.op_endpoint", openidOpEndpoint)
+                            .queryParam("openid.claimed_id", openidClaimedId)
+                            .queryParam("openid.identity", openidIdentity)
+                            .queryParam("openid.return_to", openidReturnTo)
+                            .queryParam("openid.response_nonce", openidResponseNonce)
+                            .queryParam("openid.assoc_handle", openidAssocHandle)
+                            .queryParam("openid.signed", openidSigned)
+                            .queryParam("openid.sig", openidSig)
+                            .build()
+                    )
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            String steamId = extractSteamId(openidIdentity);
+            return ResponseEntity.ok(steamId);
+
+        } catch (Exception e) {
+            logger.error("An error occurred during Steam login check", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to verify Steam login");
+        }
+    }
 
     public String extractSteamId(String openidIdentity) {
         Pattern pattern = Pattern.compile("\\d+");
@@ -26,25 +62,4 @@ public class StreamLoginService {
             throw new IllegalArgumentException();
         }
     }
-
-    public SecurityUser createSecurityUser(String steamId) {
-        return SecurityUser.builder()
-                .username("steam_" + steamId)
-                .build();
-    }
-
-    public HttpSession createNewSession(HttpServletRequest request) {
-        Optional.ofNullable(request.getSession(false)).ifPresent(HttpSession::invalidate);
-        HttpSession newSession = request.getSession(true);
-        newSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, SecurityContextHolder.getContext());
-        return newSession;
-    }
-
-    public void setSessionCookie(HttpSession session, HttpServletResponse response) {
-        Cookie cookie = new Cookie("JSESSIONID", session.getId());
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        response.addCookie(cookie);
-    }
-
 }
