@@ -1,6 +1,5 @@
 package steam_api.controller;
 
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +14,6 @@ public class SteamLoginController {
     public SteamLoginController(StreamLoginService service) {
         this.service = service;
     }
-
-
     @GetMapping("/login/check")
     public ResponseEntity<String> check(
             @RequestParam(value = "openid.ns") String openidNs,
@@ -35,4 +32,7 @@ public class SteamLoginController {
                 openidReturnTo, openidResponseNonce, openidAssocHandle, openidSigned, openidSig
         );
     }
+
+    @GetMapping("/profile")
+    userId _ key
 }
