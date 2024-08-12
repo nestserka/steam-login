@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import steam_api.dto.SteamOpenIdDTO;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,34 +20,30 @@ public class StreamLoginService {
     private String steamLoginUrl;
     private static final Logger logger = LoggerFactory.getLogger(StreamLoginService.class);
 
-    public ResponseEntity<String> checkSteamLogin(String openidNs, String openidMode, String openidOpEndpoint,
-                                                  String openidClaimedId, String openidIdentity, String openidReturnTo,
-                                                  String openidResponseNonce, String openidAssocHandle, String openidSigned,
-                                                  String openidSig) {
+    public ResponseEntity<String> checkSteamLogin(SteamOpenIdDTO steamOpenIdDTO) {
         try {
             WebClient.create(steamLoginUrl)
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/openid/login")
-                            .queryParam("openid.ns", openidNs)
+                            .queryParam("openid.ns", steamOpenIdDTO.getNs())
                             .queryParam("openid.mode", "check_authentication")
-                            .queryParam("openid.op_endpoint", openidOpEndpoint)
-                            .queryParam("openid.claimed_id", openidClaimedId)
-                            .queryParam("openid.identity", openidIdentity)
-                            .queryParam("openid.return_to", openidReturnTo)
-                            .queryParam("openid.response_nonce", openidResponseNonce)
-                            .queryParam("openid.assoc_handle", openidAssocHandle)
-                            .queryParam("openid.signed", openidSigned)
-                            .queryParam("openid.sig", openidSig)
+                            .queryParam("openid.op_endpoint", steamOpenIdDTO.getOpEndpoint())
+                            .queryParam("openid.claimed_id", steamOpenIdDTO.getClaimedId())
+                            .queryParam("openid.identity", steamOpenIdDTO.getIdentity())
+                            .queryParam("openid.return_to", steamOpenIdDTO.getReturnTo())
+                            .queryParam("openid.response_nonce", steamOpenIdDTO.getResponseNonce())
+                            .queryParam("openid.assoc_handle", steamOpenIdDTO.getAssocHandle())
+                            .queryParam("openid.signed", steamOpenIdDTO.getSigned())
+                            .queryParam("openid.sig", steamOpenIdDTO.getSig())
                             .build()
                     )
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
 
-            String steamId = extractSteamId(openidIdentity);
+            String steamId = extractSteamId(steamOpenIdDTO.getIdentity());
             return ResponseEntity.ok(steamId);
-
         } catch (Exception e) {
             logger.error("An error occurred during Steam login check", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
