@@ -42,8 +42,8 @@ public class StreamLoginService {
                     .bodyToMono(String.class)
                     .block();
 
-            String steamId = extractSteamId(steamOpenIdDTO.getIdentity());
-            return ResponseEntity.ok(steamId);
+            String usersSteamId = extractSteamId(steamOpenIdDTO.getIdentity());
+            return ResponseEntity.ok(usersSteamId);
         } catch (Exception e) {
             logger.error("An error occurred during Steam login check", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
